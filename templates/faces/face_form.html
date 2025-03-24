@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }} - Face Recognition{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="bg-white rounded-lg shadow-lg p-6">
+        <div class="sm:flex sm:items-center mb-8">
+            <div class="sm:flex-auto">
+                <h1 class="text-2xl font-semibold text-gray-900">{{ title }}</h1>
+                <p class="mt-2 text-sm text-gray-700">
+                    {% if face %}
+                    Update information for {{ face.name }}
+                    {% else %}
+                    Add a new face to the recognition system
+                    {% endif %}
+                </p>
+            </div>
+        </div>
+
+        <form method="post" enctype="multipart/form-data" class="space-y-6">
+            {% csrf_token %}
+
+            <div>
+                <label for="{{ form.name.id_for_label }}" class="block text-sm font-medium text-gray-700">Name</label>
+                <div class="mt-1">
+                    {{ form.name }}
+                </div>
+                {% if form.name.errors %}
+                <p class="mt-2 text-sm text-red-600">{{ form.name.errors.0 }}</p>
+                {% endif %}
+            </div>
+
+            <!-- Is Allowed Boolean - Improved Design -->
+            <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        {{ form.is_allowed }}
+                    </div>
+                    <div class="ml-3">
+                        <label for="{{ form.is_allowed.id_for_label }}"
+                            class="text-base font-medium text-gray-800 cursor-pointer">
+                            Allow Access
+                        </label>
+                        <p class="text-sm text-gray-500 mt-1">This person will be allowed to enter when recognized</p>
+                    </div>
+                </div>
+                {% if form.is_allowed.errors %}
+                <p class="mt-2 text-sm text-red-600">{{ form.is_allowed.errors.0 }}</p>
+                {% endif %}
+            </div>
+
+            <!-- Image Upload -->
+
+            <div>
+                <label for="{{ form.image.id_for_label }}" class="block text-sm font-medium text-gray-700">Face
+                    Image</label>
+                <div class="mt-1 flex items-center">
+                    {% if face and face.image %}
+                    <div class="mr-4">
+                        <img src="{{ face.image.url }}" alt="{{ face.name }}" class="h-20 w-20 rounded object-cover">
+                    </div>
+                    {% endif %}
+                    <div class="flex-1">
+                        {{ form.image }}
+                    </div>
+                </div>
+                {% if form.image.errors %}
+                <p class="mt-2 text-sm text-red-600">{{ form.image.errors.0 }}</p>
+                {% endif %}
+                <p class="mt-2 text-sm text-gray-500">Upload a clear front-facing photo of the person's face.</p>
+            </div>
+
+            <div class="flex justify-end space-x-4">
+                <a href="{% url 'face_list' %}"
+                    class="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50">
+                    Cancel
+                </a>
+                <button type="submit"
+                    class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    {{ button_text }}
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

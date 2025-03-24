@@ -1,0 +1,710 @@
+{% extends 'base.html' %}
+
+{% block title %}Face Recognition{% endblock %}
+
+{% block extra_head %}
+<script src="https://cdn.tailwindcss.com"></script>
+{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 max-w-4xl">
+    <header class="mb-10 text-center">
+        <h1 class="text-3xl font-bold text-blue-600 mb-2">Face Recognition System</h1>
+        <p id="systemDescription" class="text-gray-600">Upload an image to detect and recognize faces</p>
+    </header>
+
+    <div class="bg-white rounded-lg shadow-lg p-6 mb-8">
+        <!-- Model Selection and Tab Navigation -->
+        <div class="flex items-center justify-between border-b border-gray-200 mb-6">
+            <!-- Tab Navigation -->
+            <div class="flex">
+                <button onclick="switchTab('upload')" id="uploadTab"
+                    class="px-6 py-2 border-b-2 border-blue-600 text-blue-600 font-medium">
+                    Upload Image
+                </button>
+                <button onclick="switchTab('webcam')" id="webcamTab"
+                    class="px-6 py-2 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium">
+                    Take Photo
+                </button>
+            </div>
+            <!-- Model Selection Dropdown -->
+            <select id="modelSelect"
+                class="px-4 py-2 border rounded-lg text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <option value="yolov8n">YOLOv8n (faster)</option>
+                <option value="yolov8m">YOLOv8m (accurate)</option>
+                <option value="yolov8n-face">YOLOv8n Face</option>
+                <option value="yolov8m-face">YOLOv8m Face</option>
+                <option value="yolov8l-face">YoloV8L Face</option>
+                <option value="yolov10s-face">YoloV10S Face</option>
+                <option value="yolov11m-face">YoloV11M Face</option>
+                <option value="yolov11l-face">YoloV11L Face</option>
+            </select>
+        </div>
+
+        <!-- Upload Image Section -->
+        <div id="uploadSection" class="mb-6">
+            <div class="flex flex-col md:flex-row gap-4">
+                <label
+                    class="flex-1 flex flex flex-col items-center px-4 py-6 bg-gray-50 text-blue-500 rounded-lg border-2 border-dashed border-blue-300 cursor-pointer hover:bg-gray-100 transition duration-300">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 mb-2" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    <span class="mt-2 text-sm font-medium">Select image</span>
+                    <input type="file" id="imageInput" class="hidden" accept="image/*" onchange="previewImage(this)" />
+                </label>
+                <div class="flex-1 flex flex-col items-center justify-center">
+                    <div id="imagePreviewContainer"
+                        class="hidden w-full h-48 bg-gray-200 rounded-lg overflow-hidden relative">
+                        <img id="imagePreview" class="w-full h-full object-contain" />
+                        <canvas id="imagePreviewOverlay"
+                            class="absolute top-0 left-0 w-full h-full pointer-events-none"></canvas>
+                    </div>
+                    <button onclick="uploadImage()" id="uploadButton"
+                        class="mt-4 w-full md:w-auto px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition duration-300 disabled:bg-blue-300 disabled:cursor-not-allowed"
+                        disabled>
+                        Process Image
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Webcam Section -->
+        <div id="webcamSection" class="hidden">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-xl font-semibold text-gray-800">Take Photo with Webcam</h2>
+                <div class="flex gap-3">
+                    <div class="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+                        Press <kbd class="bg-gray-200 text-gray-700 px-2 py-1 rounded font-mono">T</kbd> to toggle
+                        camera
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex flex-col md:flex-row gap-6">
+                <div class="flex-1">
+                    <div id="webcamContainer"
+                        class="relative bg-gray-800 rounded-lg overflow-hidden h-64 flex items-center justify-center">
+                        <video id="webcam" class="h-full w-full object-cover" autoplay playsinline></video>
+                        <div id="webcamPlaceholder"
+                            class="absolute inset-0 flex flex-col items-center justify-center text-white bg-gray-800">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mb-2 text-gray-400" fill="none"
+                                viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                            </svg>
+                            <p class="text-gray-400">Camera not started</p>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-between mt-3">
+                        <button id="startWebcamButton"
+                            class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition duration-300">
+                            Start Camera
+                        </button>
+                        <button id="stopWebcamButton"
+                            class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition duration-300 hidden">
+                            Stop Camera
+                        </button>
+                        <button id="captureButton"
+                            class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition duration-300 disabled:bg-blue-300 disabled:cursor-not-allowed"
+                            disabled>
+                            Capture Photo
+                        </button>
+                    </div>
+                </div>
+
+                <div class="flex-1">
+                    <div id="capturedPhotoContainer"
+                        class="hidden bg-gray-200 rounded-lg overflow-hidden h-64 relative">
+                        <canvas id="capturedPhoto" class="w-full h-full object-contain"></canvas>
+                        <canvas id="capturedPhotoOverlay"
+                            class="absolute top-0 left-0 w-full h-full pointer-events-none"></canvas>
+                    </div>
+
+                    <button id="useCapturedPhotoButton"
+                        class="mt-3 w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition duration-300 disabled:bg-blue-300 disabled:cursor-not-allowed hidden">
+                        Process Photo
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="resultContainer" class="bg-white rounded-lg shadow-lg p-6 hidden">
+        <h3 class="text-xl font-semibold text-gray-800 mb-4">Recognition Results</h3>
+
+        <div id="recognitionInfo" class="mb-6">
+            <p class="text-gray-700">Processing status: <span id="status" class="font-semibold"></span></p>
+            <p class="text-gray-700">People detected: <span id="peopleCount" class="font-semibold"></span></p>
+        </div>
+
+        <div id="facesContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <!-- Recognized faces will be inserted here -->
+        </div>
+
+        <div class="mt-6 border-t pt-4">
+            <h4 class="text-lg font-medium text-gray-800 mb-2">Raw JSON Response:</h4>
+            <pre id="result" class="bg-gray-100 p-4 rounded-lg text-sm overflow-auto max-h-96"></pre>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    // Add tab switching functionality
+    let lastWebcamState = false; // Track if webcam was on before leaving tab
+
+    function switchTab(tab) {
+        const descriptions = {
+            'upload': 'Upload an image to detect and recognize faces',
+            'webcam': 'Take a photo to detect and recognize faces'
+        };
+
+        // Update description
+        document.getElementById('systemDescription').textContent = descriptions[tab];
+
+        // Update tab buttons
+        document.getElementById('uploadTab').classList.toggle('border-blue-600', tab === 'upload');
+        document.getElementById('uploadTab').classList.toggle('text-blue-600', tab === 'upload');
+        document.getElementById('webcamTab').classList.toggle('border-blue-600', tab === 'webcam');
+        document.getElementById('webcamTab').classList.toggle('text-blue-600', tab === 'webcam');
+
+        document.getElementById('uploadTab').classList.toggle('border-transparent', tab !== 'upload');
+        document.getElementById('webcamTab').classList.toggle('border-transparent', tab !== 'webcam');
+
+        // Show/hide sections
+        document.getElementById('uploadSection').classList.toggle('hidden', tab !== 'upload');
+        document.getElementById('webcamSection').classList.toggle('hidden', tab !== 'webcam');
+
+        // Handle webcam state
+        if (tab === 'webcam') {
+            // If webcam was on before leaving tab, turn it back on
+            if (lastWebcamState) {
+                startWebcam();
+            }
+        } else {
+            // Store current webcam state before leaving tab
+            lastWebcamState = !!webcamStream;
+            // Stop webcam when leaving webcam tab
+            stopWebcam();
+        }
+    }
+
+    // Global variables for webcam functionality
+    let webcamStream = null;
+    const webcam = document.getElementById('webcam');
+    const capturedPhoto = document.getElementById('capturedPhoto');
+    const capturedPhotoContainer = document.getElementById('capturedPhotoContainer');
+    const webcamPlaceholder = document.getElementById('webcamPlaceholder');
+
+    // Event listeners for webcam functionality
+    document.getElementById('startWebcamButton').addEventListener('click', startWebcam);
+    document.getElementById('captureButton').addEventListener('click', capturePhoto);
+    document.getElementById('useCapturedPhotoButton').addEventListener('click', useWebcamPhoto);
+    document.getElementById('stopWebcamButton').addEventListener('click', stopWebcam);
+
+    // Add keyboard event listener for 'Z' and 'T' keys
+    document.addEventListener('keydown', function (event) {
+        // Only handle keyboard shortcuts if webcam tab is active
+        if (document.getElementById('webcamSection').classList.contains('hidden')) return;
+
+        // Check if Z key is pressed (for capturing photo)
+        if (event.key.toLowerCase() === 'z' && webcamStream) {
+            capturePhoto();
+            useWebcamPhoto();
+        }
+
+        // Check if T key is pressed (for toggling camera)
+        if (event.key.toLowerCase() === 't') {
+            if (webcamStream) {
+                stopWebcam();
+            } else {
+                startWebcam();
+            }
+        }
+    });
+
+    // Function to start the webcam
+    function startWebcam() {
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+            navigator.mediaDevices.getUserMedia({ video: true })
+                .then(function (stream) {
+                    webcamStream = stream;
+                    webcam.srcObject = stream;
+                    webcamPlaceholder.classList.add('hidden');
+
+                    // Enable capture button once webcam is started
+                    document.getElementById('captureButton').disabled = false;
+
+                    // Show stop button, hide start button
+                    document.getElementById('startWebcamButton').classList.add('hidden');
+                    document.getElementById('stopWebcamButton').classList.remove('hidden');
+                })
+                .catch(function (error) {
+                    console.error("Error accessing webcam:", error);
+                    alert("Could not access webcam. Please check your camera settings and permissions.");
+                });
+        } else {
+            alert("Sorry, your browser does not support accessing the webcam.");
+        }
+    }
+
+    // Function to stop the webcam
+    function stopWebcam() {
+        if (webcamStream) {
+            webcamStream.getTracks().forEach(track => track.stop());
+            webcamStream = null;
+            webcam.srcObject = null;
+            webcamPlaceholder.classList.remove('hidden');
+            document.getElementById('captureButton').disabled = true;
+            document.getElementById('startWebcamButton').textContent = 'Start Camera';
+            document.getElementById('startWebcamButton').classList.remove('hidden');
+            document.getElementById('stopWebcamButton').classList.add('hidden');
+        }
+    }
+
+    // Function to capture photo from webcam
+    function capturePhoto() {
+        if (!webcamStream) return;
+
+        const context = capturedPhoto.getContext('2d');
+        const overlay = document.getElementById('capturedPhotoOverlay').getContext('2d');
+
+        // Clear any previous drawings on the overlay canvas
+        overlay.clearRect(0, 0, document.getElementById('capturedPhotoOverlay').width,
+            document.getElementById('capturedPhotoOverlay').height);
+
+        // Set canvas dimensions to match video dimensions
+        capturedPhoto.width = webcam.videoWidth;
+        capturedPhoto.height = webcam.videoHeight;
+
+        // Draw the current video frame
+        context.drawImage(webcam, 0, 0, capturedPhoto.width, capturedPhoto.height);
+
+        // Set the overlay canvas to the same dimensions
+        const overlayCanvas = document.getElementById('capturedPhotoOverlay');
+        overlayCanvas.width = capturedPhoto.width;
+        overlayCanvas.height = capturedPhoto.height;
+
+        // Show the captured photo container and process button
+        capturedPhotoContainer.classList.remove('hidden');
+        document.getElementById('useCapturedPhotoButton').classList.remove('hidden');
+    }
+
+    // Function to use the captured photo for face recognition
+    function useWebcamPhoto() {
+        // Convert canvas to blob
+        capturedPhoto.toBlob(function (blob) {
+            const formData = new FormData();
+            formData.append("image", blob, "webcam-capture.jpg");
+            formData.append("model", document.getElementById("modelSelect").value);
+
+            // Show loading state
+            document.getElementById("useCapturedPhotoButton").disabled = true;
+            document.getElementById("useCapturedPhotoButton").innerText = "Processing...";
+            document.getElementById("resultContainer").classList.add("hidden");
+
+            // Send the image directly for processing
+            fetch("/detect/", {
+                method: "POST",
+                headers: {
+                    "X-CSRFToken": getCookie("csrftoken")
+                },
+                body: formData
+            })
+                .then(response => response.json())
+                .then(data => {
+                    // Update JSON result display
+                    document.getElementById("result").innerText = JSON.stringify(data, null, 2);
+
+                    // Show the result container
+                    document.getElementById("resultContainer").classList.remove("hidden");
+
+                    // Update recognition info
+                    document.getElementById("status").innerText = data.status || "Unknown";
+                    document.getElementById("peopleCount").innerText = data.people_count || 0;
+
+                    // Clear previous faces
+                    const facesContainer = document.getElementById("facesContainer");
+                    facesContainer.innerHTML = "";
+
+                    // Add recognized faces to the UI
+                    if (data.recognized_people && data.recognized_people.length > 0) {
+                        data.recognized_people.forEach(person => {
+                            const faceCard = document.createElement("div");
+
+                            // Determine access status badge HTML
+                            const accessBadge = person.is_allowed !== undefined ?
+                                `<div class="absolute top-2 right-2">
+                                    <span class="px-2 py-1 text-xs font-bold rounded-full ${person.is_allowed ?
+                                    'bg-green-100 text-green-800' :
+                                    'bg-red-100 text-red-800'}">
+                                        ${person.is_allowed ? '✓ ALLOWED' : '✗ DENIED'}
+                                    </span>
+                                </div>` : '';
+
+                            // Determine if the card should be clickable
+                            const cardContent = `
+                                <div class="flex items-center gap-3 mb-2">
+                                    <div class="h-10 w-10 rounded-full ${person.filename ? 'bg-cover bg-center bg-no-repeat' : 'bg-blue-100 flex items-center justify-center'}" 
+                                        ${person.filename ? `style="background-image: url('${person.filename}')"` : ''}>
+                                        ${!person.filename ? `
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                        </svg>
+                                        ` : ''}
+                                    </div>
+                                    <div>
+                                        <h4 class="text-lg font-medium text-gray-800">
+                                            ${person.name || "Unknown"}
+                                        </h4>
+                                        ${person.id ?
+                                    `<p class="text-sm text-gray-500">ID: ${person.id}</p>` :
+                                    ''}
+                                    </div>
+                                </div>
+                                <p class="text-sm text-gray-600">Confidence: ${formatConfidence(person.confidence)}</p>
+                                ${person.error ? `<p class="text-sm text-red-500 mt-1">Error: ${person.error}</p>` : ''}
+                            `;
+
+                            if (person.id) {
+                                // Make the whole card a link if ID is present
+                                faceCard.innerHTML = `
+                                    <a href="/faces/${person.id}/" 
+                                       class="block bg-gray-50 rounded-lg p-4 border border-gray-200 
+                                              transition-all duration-200 hover:bg-gray-100 hover:shadow-md relative ${person.is_allowed ?
+                                        'border-l-4 border-l-green-500' :
+                                        'border-l-4 border-l-red-500'}">
+                                        ${accessBadge}
+                                        ${cardContent}
+                                    </a>
+                                `;
+                            } else {
+                                // Regular non-clickable card if no ID
+                                faceCard.className = "bg-gray-50 rounded-lg p-4 border border-gray-200 relative";
+                                faceCard.innerHTML = `${accessBadge}${cardContent}`;
+                            }
+
+                            facesContainer.appendChild(faceCard);
+                        });
+                    } else {
+                        facesContainer.innerHTML = '<p class="col-span-full text-center py-8 text-gray-500">No faces detected or recognized</p>';
+                    }
+
+                    // Draw rectangles on the captured photo
+                    const capturedPhoto = document.getElementById('capturedPhoto');
+                    const capturedPhotoOverlay = document.getElementById('capturedPhotoOverlay');
+                    drawFaceRectangles(data, capturedPhoto, capturedPhotoOverlay);
+
+                    // Reset button
+                    document.getElementById("useCapturedPhotoButton").disabled = false;
+                    document.getElementById("useCapturedPhotoButton").innerText = "Process Photo";
+                })
+                .catch(error => {
+                    console.error("Error:", error);
+                    alert("An error occurred during face recognition");
+
+                    // Reset button
+                    document.getElementById("useCapturedPhotoButton").disabled = false;
+                    document.getElementById("useCapturedPhotoButton").innerText = "Process Photo";
+                });
+        }, 'image/jpeg');
+    }
+
+    function previewImage(input) {
+        const previewContainer = document.getElementById('imagePreviewContainer');
+        const preview = document.getElementById('imagePreview');
+        const uploadButton = document.getElementById('uploadButton');
+        const imagePreviewOverlay = document.getElementById('imagePreviewOverlay');
+
+        // Clear any existing drawings on the overlay canvas
+        const overlay = imagePreviewOverlay.getContext('2d');
+        overlay.clearRect(0, 0, imagePreviewOverlay.width, imagePreviewOverlay.height);
+
+        if (input.files && input.files[0]) {
+            const reader = new FileReader();
+
+            reader.onload = function (e) {
+                preview.src = e.target.result;
+                previewContainer.classList.remove('hidden');
+                uploadButton.disabled = false;
+
+                // Add onload handler to ensure overlay is cleared when image is fully loaded
+                preview.onload = function () {
+                    overlay.clearRect(0, 0, imagePreviewOverlay.width, imagePreviewOverlay.height);
+                };
+            };
+
+            reader.readAsDataURL(input.files[0]);
+        } else {
+            previewContainer.classList.add('hidden');
+            uploadButton.disabled = true;
+        }
+    }
+
+    function uploadImage() {
+        const input = document.getElementById("imageInput").files[0];
+        if (!input) {
+            alert("Please select an image first");
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append("image", input);
+        formData.append("model", document.getElementById("modelSelect").value);
+
+        // Show loading state
+        document.getElementById("uploadButton").disabled = true;
+        document.getElementById("uploadButton").innerText = "Processing...";
+        document.getElementById("resultContainer").classList.add("hidden");
+
+        fetch("/detect/", {
+            method: "POST",
+            headers: {
+                "X-CSRFToken": getCookie("csrftoken")
+            },
+            body: formData
+        })
+            .then(response => response.json())
+            .then(data => {
+                // Update JSON result display
+                document.getElementById("result").innerText = JSON.stringify(data, null, 2);
+
+                // Show the result container
+                document.getElementById("resultContainer").classList.remove("hidden");
+
+                // Update recognition info
+                document.getElementById("status").innerText = data.status || "Unknown";
+                document.getElementById("peopleCount").innerText = data.people_count || 0;
+
+                // Clear previous faces
+                const facesContainer = document.getElementById("facesContainer");
+                facesContainer.innerHTML = "";
+
+                // Add recognized faces to the UI
+                if (data.recognized_people && data.recognized_people.length > 0) {
+                    data.recognized_people.forEach(person => {
+                        const faceCard = document.createElement("div");
+
+                        // Determine access status badge HTML
+                        const accessBadge = person.is_allowed !== undefined ?
+                            `<div class="absolute top-2 right-2">
+                                <span class="px-2 py-1 text-xs font-bold rounded-full ${person.is_allowed ?
+                                'bg-green-100 text-green-800' :
+                                'bg-red-100 text-red-800'}">
+                                    ${person.is_allowed ? '✓ ALLOWED' : '✗ DENIED'}
+                                </span>
+                            </div>` : '';
+
+                        // Determine if the card should be clickable
+                        const cardContent = `
+                            <div class="flex items-center gap-3 mb-2">
+                                <div class="h-10 w-10 rounded-full ${person.filename ? 'bg-cover bg-center bg-no-repeat' : 'bg-blue-100 flex items-center justify-center'}" 
+                                    ${person.filename ? `style="background-image: url('${person.filename}')"` : ''}>
+                                    ${!person.filename ? `
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                    </svg>
+                                    ` : ''}
+                                </div>
+                                <div>
+                                    <h4 class="text-lg font-medium text-gray-800">
+                                        ${person.name || "Unknown"}
+                                    </h4>
+                                    ${person.id ?
+                                `<p class="text-sm text-gray-500">ID: ${person.id}</p>` :
+                                ''}
+                                </div>
+                            </div>
+                            <p class="text-sm text-gray-600">Confidence: ${formatConfidence(person.confidence)}</p>
+                            ${person.error ? `<p class="text-sm text-red-500 mt-1">Error: ${person.error}</p>` : ''}
+                        `;
+
+                        if (person.id) {
+                            // Make the whole card a link if ID is present
+                            faceCard.innerHTML = `
+                                <a href="/faces/${person.id}/" 
+                                   class="block bg-gray-50 rounded-lg p-4 border border-gray-200 
+                                          transition-all duration-200 hover:bg-gray-100 hover:shadow-md relative ${person.is_allowed ?
+                                    'border-l-4 border-l-green-500' :
+                                    'border-l-4 border-l-red-500'}">
+                                    ${accessBadge}
+                                    ${cardContent}
+                                </a>
+                            `;
+                        } else {
+                            // Regular non-clickable card if no ID
+                            faceCard.className = "bg-gray-50 rounded-lg p-4 border border-gray-200 relative";
+                            faceCard.innerHTML = `${accessBadge}${cardContent}`;
+                        }
+
+                        facesContainer.appendChild(faceCard);
+                    });
+                } else {
+                    facesContainer.innerHTML = '<p class="col-span-full text-center py-8 text-gray-500">No faces detected or recognized</p>';
+                }
+
+                // Draw rectangles on the preview image
+                const imagePreview = document.getElementById('imagePreview');
+                const imagePreviewOverlay = document.getElementById('imagePreviewOverlay');
+                drawFaceRectangles(data, imagePreview, imagePreviewOverlay);
+
+                // Reset button
+                document.getElementById("uploadButton").disabled = false;
+                document.getElementById("uploadButton").innerText = "Process Image";
+            })
+            .catch(error => {
+                console.error("Error:", error);
+                alert("An error occurred during face recognition");
+
+                // Reset button
+                document.getElementById("uploadButton").disabled = false;
+                document.getElementById("uploadButton").innerText = "Process Image";
+            });
+    }
+
+    function formatConfidence(confidence) {
+        if (confidence === undefined || confidence === null) return "N/A";
+
+        // Calculate percentage (higher is better)
+        const percentage = Math.round(100 * (1 - confidence));
+
+        // For DeepFace, lower distance means higher confidence
+        let textLevel = "Low";
+        if (confidence < 0.5) textLevel = "High";
+        else if (confidence < 0.7) textLevel = "Medium";
+
+        return `${textLevel} (${percentage}%)`;
+    }
+
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== "") {
+            let cookies = document.cookie.split(";");
+            for (let i = 0; i < cookies.length; i++) {
+                let cookie = cookies[i].trim();
+                if (cookie.startsWith(name + "=")) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    function drawFaceRectangles(data, sourceElement, overlayCanvas) {
+        const overlay = overlayCanvas.getContext('2d');
+
+        // Clear previous drawings
+        overlay.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+
+        // Get the natural dimensions of the source
+        const naturalWidth = sourceElement.tagName.toLowerCase() === 'canvas' ?
+            sourceElement.width : sourceElement.naturalWidth;
+        const naturalHeight = sourceElement.tagName.toLowerCase() === 'canvas' ?
+            sourceElement.height : sourceElement.naturalHeight;
+
+        // Get the display dimensions
+        const rect = sourceElement.getBoundingClientRect();
+        overlayCanvas.width = rect.width;
+        overlayCanvas.height = rect.height;
+
+        // Calculate the displayed dimensions accounting for object-contain scaling
+        let displayWidth, displayHeight, offsetX = 0, offsetY = 0;
+
+        // Calculate aspect ratios
+        const containerRatio = rect.width / rect.height;
+        const imageRatio = naturalWidth / naturalHeight;
+
+        // Determine how the image fits in the container (object-contain behavior)
+        if (imageRatio > containerRatio) {
+            // Image is wider than container (relative to their heights)
+            displayWidth = rect.width;
+            displayHeight = displayWidth / imageRatio;
+            offsetY = (rect.height - displayHeight) / 2;
+        } else {
+            // Image is taller than container (relative to their widths)
+            displayHeight = rect.height;
+            displayWidth = displayHeight * imageRatio;
+            offsetX = (rect.width - displayWidth) / 2;
+        }
+
+        // Calculate scale factors based on the actual displayed dimensions
+        const scaleX = displayWidth / naturalWidth;
+        const scaleY = displayHeight / naturalHeight;
+
+        // Draw rectangles for each detected face
+        if (data.recognized_people) {
+            data.recognized_people.forEach(person => {
+                if (person.box) {
+                    // Different colors based on access status
+                    if (person.is_allowed !== undefined) {
+                        overlay.strokeStyle = person.is_allowed ? '#00ff00' : '#ff0000';
+                        overlay.fillStyle = person.is_allowed ? '#00ff00' : '#ff0000';
+                    } else {
+                        overlay.strokeStyle = '#00ff00'; // Default color
+                        overlay.fillStyle = '#00ff00';
+                    }
+
+                    overlay.lineWidth = 2;
+                    overlay.font = '14px Arial';
+
+                    const [x1, y1, x2, y2] = person.box;
+
+                    // Scale coordinates to match displayed image size with offsets
+                    const scaledX = x1 * scaleX + offsetX;
+                    const scaledY = y1 * scaleY + offsetY;
+                    const scaledWidth = (x2 - x1) * scaleX;
+                    const scaledHeight = (y2 - y1) * scaleY;
+
+                    // Draw rectangle
+                    overlay.strokeRect(scaledX, scaledY, scaledWidth, scaledHeight);
+
+                    // Draw name label with background for better visibility
+                    const name = person.name || "Unknown";
+                    const textWidth = overlay.measureText(name).width;
+
+                    // Ensure the label doesn't go off the top of the image
+                    const labelY = Math.max(offsetY, scaledY - 20);
+
+                    overlay.fillStyle = 'rgba(0, 0, 0, 0.5)';
+                    overlay.fillRect(scaledX, labelY, textWidth + 4, 16);
+
+                    // Set text color based on access status
+                    if (person.is_allowed !== undefined) {
+                        overlay.fillStyle = person.is_allowed ? '#00ff00' : '#ff0000';
+                    } else {
+                        overlay.fillStyle = '#00ff00'; // Default color
+                    }
+
+                    overlay.fillText(name, scaledX + 2, labelY + 12);
+                }
+            });
+        }
+    }
+
+    // Add window resize handler to redraw rectangles when window is resized
+    let resizeTimeout;
+    window.addEventListener('resize', () => {
+        clearTimeout(resizeTimeout);
+        resizeTimeout = setTimeout(() => {
+            const lastResultData = document.getElementById("result").innerText;
+            if (lastResultData) {
+                const data = JSON.parse(lastResultData);
+
+                // Redraw rectangles on both preview and captured photo
+                const imagePreview = document.getElementById('imagePreview');
+                const imagePreviewOverlay = document.getElementById('imagePreviewOverlay');
+                const capturedPhoto = document.getElementById('capturedPhoto');
+                const capturedPhotoOverlay = document.getElementById('capturedPhotoOverlay');
+
+                drawFaceRectangles(data, imagePreview, imagePreviewOverlay);
+                drawFaceRectangles(data, capturedPhoto, capturedPhotoOverlay);
+            }
+        }, 250);
+    });
+</script>
+{% endblock %}
